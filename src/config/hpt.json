@@ -1,0 +1,13 @@
+{
+    "num_trials": 5,
+    "hyperparameters": [
+      {
+        "name": "encode_len",
+        "short_desc": "The window size.",
+        "type": "int",
+        "search_type": "uniform",
+        "range_low": 2,
+        "range_high": 20
+      }
+    ]
+  }
