@@ -167,14 +167,24 @@ def train_test_split(
 
     n_series = data[id_col].nunique()
 
-    n_test_series = int(n_series * test_split)
+    if n_series == 1:  # If only one series, split by index
+        test_size = int(len(data) * test_split)
+        test_set = data.iloc[-test_size:]
+        train_set = data.iloc[:-test_size]
 
-    smallest_n_series = (
-        data[id_col].value_counts().sort_values().iloc[:n_test_series].index.tolist()
-    )
+    else:  # If multiple series, split by series
+        n_test_series = int(n_series * test_split)
 
-    test_set = data[data[id_col].isin(smallest_n_series)]
-    train_set = data[~data[id_col].isin(smallest_n_series)]
+        smallest_n_series = (
+            data[id_col]
+            .value_counts()
+            .sort_values()
+            .iloc[:n_test_series]
+            .index.tolist()
+        )
+
+        test_set = data[data[id_col].isin(smallest_n_series)]
+        train_set = data[~data[id_col].isin(smallest_n_series)]
 
     return train_set, test_set
 

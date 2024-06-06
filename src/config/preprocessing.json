@@ -1,5 +1,3 @@
 {
-  "valid_split": 0.1,
-  "max_windows": 100000,
-  "scaler_max_bound": 10.0
+  "max_windows": 100000
 }
