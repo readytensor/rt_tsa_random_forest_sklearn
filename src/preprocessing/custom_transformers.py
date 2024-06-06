@@ -527,8 +527,7 @@ class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
         Initializes the TimeSeriesMinMaxScaler.
 
         Args:
-            encode_len (int): The length of the history window in the time-series.
-            upper_bound (float): The upper bound to which values are capped after scaling.
+            columns (List): The columns to scale.
         """
         self.scaler = MinMaxScaler()
         self.columns = columns
@@ -539,7 +538,7 @@ class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
         No-op
 
         Args:
-            X (np.ndarray): Input time-series data of shape [N, T, D].
+            X (pd.DataFrame): The input dataframe.
             y: Ignored. Exists for compatibility with the sklearn transformer interface.
 
         Returns:
@@ -557,10 +556,10 @@ class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
         Applies the MinMax scaling transformation to the input data.
 
         Args:
-            X (pd.DataFrame):
+            X (pd.DataFrame): The input dataframe.
 
         Returns:
-
+            pd.DataFrame: The transformed dataframe.
         """
         X_scaled = X.copy()
         X_scaled.loc[:, self.columns] = self.scaler.transform(

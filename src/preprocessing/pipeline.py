@@ -82,7 +82,6 @@ def create_preprocess_pipelines(
                     max_windows=preprocessing_config["max_windows"],
                 ),
             ),
-            # ("minmax_scaler", scaler),
         ]
     )
     # inference-specific steps
