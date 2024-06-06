@@ -150,12 +150,12 @@ def train_test_split(
     Splits a numpy array into train and test sets along the first dimension.
 
     Args:
-    data (np.ndarray): A numpy array of shape [N, T, D].
+    data (pd.DataFrame): The input dataframe.
     id_col (str): The name of the column containing the IDs.
     test_split (float): Fraction of the dataset to be included in the test split. Default is 0.2.
 
     Returns:
-    Tuple[np.ndarray, np.ndarray]: Two numpy arrays representing the train and test sets.
+    Tuple[pd.DataFrame, pd.DataFrame]: Two pandas dataframes representing the train and test sets.
 
     Raises:
     ValueError: If test_split is not between 0 and 1.
@@ -165,24 +165,17 @@ def train_test_split(
     if not 0 <= test_split <= 1:
         raise ValueError("test_split must be between 0 and 1")
 
-    grouped = data.groupby(id_col)
+    n_series = data[id_col].nunique()
 
-    train_data = []
-    test_data = []
+    n_test_series = int(n_series * test_split)
 
-    for _, group in grouped:
-        group_size = group.shape[0]
-        test_size = int(group_size * test_split)
-        train_size = group_size - test_size
+    smallest_n_series = (
+        data[id_col].value_counts().sort_values().iloc[:n_test_series].index.tolist()
+    )
 
-        train_set = group.iloc[:train_size]
-        test_set = group.iloc[train_size:]
+    test_set = data[data[id_col].isin(smallest_n_series)]
+    train_set = data[~data[id_col].isin(smallest_n_series)]
 
-        train_data.append(train_set)
-        test_data.append(test_set)
-
-    train_set = pd.concat(train_data)
-    test_set = pd.concat(test_data)
     return train_set, test_set
 
 
