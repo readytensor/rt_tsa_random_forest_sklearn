@@ -23,6 +23,7 @@ def create_preprocess_pipelines(
     Returns:
         Tuple[Pipeline, Pipeline]: Tuple of training and inference pipelines
     """
+    scaler = transformers.TimeSeriesMinMaxScaler(columns=data_schema.features)
 
     # Common steps for both train and inference pipelines
     common_steps = [
@@ -52,10 +53,12 @@ def create_preprocess_pipelines(
             "padding",
             transformers.PaddingTransformer(id_col=data_schema.id_col),
         ),
+        ("minmax_scaler", scaler),
     ]
     training_steps = common_steps.copy()
     inference_steps = common_steps.copy()
     # training-specific steps
+
     training_steps.extend(
         [
             (
@@ -79,13 +82,7 @@ def create_preprocess_pipelines(
                     max_windows=preprocessing_config["max_windows"],
                 ),
             ),
-            # (
-            #     "minmax_scaler",
-            #     transformers.TimeSeriesMinMaxScaler(
-            #         encode_len=encode_len,
-            #         upper_bound=preprocessing_config["scaler_max_bound"],
-            #     ),
-            # ),
+            # ("minmax_scaler", scaler),
         ]
     )
     # inference-specific steps
@@ -108,13 +105,6 @@ def create_preprocess_pipelines(
                     max_windows=preprocessing_config["max_windows"],
                 ),
             ),
-            # (
-            #     "minmax_scaler",
-            #     transformers.TimeSeriesMinMaxScaler(
-            #         encode_len=encode_len,
-            #         upper_bound=preprocessing_config["scaler_max_bound"],
-            #     ),
-            # ),
         ]
     )
     return Pipeline(training_steps), Pipeline(inference_steps)

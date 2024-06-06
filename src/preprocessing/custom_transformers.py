@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import MinMaxScaler
 
 PADDING_VALUE = 5000
 
@@ -267,10 +268,10 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
         self.padding_value = padding_value
 
     def fit(self, X, y=None):
-        self.max_length = X.groupby(self.id_col).size().max()
         return self
 
     def transform(self, X):
+        self.max_length = X.groupby(self.id_col).size().max()
         for group in X.groupby(self.id_col):
             group_id, group_data = group
             padding_length = self.max_length - group_data.shape[0]
@@ -521,9 +522,7 @@ class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
         upper_bound (float): The upper bound to which values are capped after scaling.
     """
 
-    def __init__(
-        self, encode_len: int, upper_bound: float = 3.5, exclude_dims: List = []
-    ):
+    def __init__(self, columns: List = []):
         """
         Initializes the TimeSeriesMinMaxScaler.
 
@@ -531,14 +530,11 @@ class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
             encode_len (int): The length of the history window in the time-series.
             upper_bound (float): The upper bound to which values are capped after scaling.
         """
-        self.encode_len = encode_len
-        self.upper_bound = upper_bound
-        self.min_vals_per_d = None
-        self.max_vals_per_d = None
-        self.range_per_d = None
-        self.exclude_dims = exclude_dims
+        self.scaler = MinMaxScaler()
+        self.columns = columns
+        self.fitted = False
 
-    def fit(self, X: np.ndarray, y=None) -> "TimeSeriesMinMaxScaler":
+    def fit(self, X: pd.DataFrame, y=None) -> "TimeSeriesMinMaxScaler":
         """
         No-op
 
@@ -549,50 +545,25 @@ class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
         Returns:
             TimeSeriesMinMaxScaler: The fitted scaler.
         """
+        if self.fitted:
+            return self
+        X_scaled = X.copy()[self.columns]
+        self.scaler.fit(X_scaled)
+        self.fitted = True
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Applies the MinMax scaling transformation to the input data.
 
         Args:
-            X (np.ndarray): Input time-series data of shape [N, T, D].
+            X (pd.DataFrame):
 
         Returns:
-            np.ndarray: The transformed data of shape [N, T, D].
+
         """
-        target = np.copy(X[:, :, -1]).reshape(-1, X.shape[1], 1)
-        X = X[:, :, :-1]
-        if self.encode_len > X.shape[1]:
-            raise ValueError(
-                f"Expected sequence length for scaling >= {self.encode_len}."
-                f" Found length {X.shape[1]}."
-            )
-        # Calculate min, max, and range for scaling
-        self.min_vals_per_d = np.min(X[:, : self.encode_len, :], axis=1, keepdims=True)
-        self.max_vals_per_d = np.max(X[:, : self.encode_len, :], axis=1, keepdims=True)
-        self.range_per_d = self.max_vals_per_d - self.min_vals_per_d
-        self.range_per_d = np.where(self.range_per_d == 0, -1, self.range_per_d)
-        X_scaled = np.where(
-            self.range_per_d == -1, 0, (X - self.min_vals_per_d) / self.range_per_d
+        X_scaled = X.copy()
+        X_scaled.loc[:, self.columns] = self.scaler.transform(
+            X_scaled.loc[:, self.columns]
         )
-        X_scaled = np.clip(X_scaled, -self.upper_bound, self.upper_bound)
-        X_scaled = np.concatenate([X_scaled, target], axis=-1)
         return X_scaled
-
-    def inverse_transform(self, X: np.ndarray) -> np.ndarray:
-        """
-        Applies the inverse of the MinMax scaling transformation.
-
-        Args:
-            X (np.ndarray): Scaled time-series data of shape [N, T, D].
-
-        Returns:
-            np.ndarray: The inverse transformed data.
-        """
-        rescaled_X = np.where(
-            self.range_per_d[:, :, :1] == -1,
-            X[:, :, :1] + self.min_vals_per_d[:, :, :1],
-            X[:, :, :1] * self.range_per_d[:, :, :1] + self.min_vals_per_d[:, :, :1],
-        )
-        return rescaled_X
