@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import MinMaxScaler
 
-PADDING_VALUE = 5000
+PADDING_VALUE = -1
 
 
 class ColumnSelector(BaseEstimator, TransformerMixin):
@@ -94,7 +94,6 @@ class LabelEncoder(BaseEstimator, TransformerMixin):
         X = X.copy()
         for col in self.columns:
             X[col] = X[col].map(self.encoders[col])
-
         return X
 
     def inverse_transform(
@@ -262,9 +261,12 @@ class DataFrameSorter(BaseEstimator, TransformerMixin):
 
 
 class PaddingTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, id_col: str, padding_value=PADDING_VALUE) -> None:
+    def __init__(
+        self, id_col: str, target_col: str, padding_value=PADDING_VALUE
+    ) -> None:
         super().__init__()
         self.id_col = id_col
+        self.target_col = target_col
         self.padding_value = padding_value
 
     def fit(self, X, y=None):
@@ -273,8 +275,10 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         self.max_length = X.groupby(self.id_col).size().max()
         padded_X = None
-        for group in X.groupby(self.id_col):
-            group_id, group_data = group
+        grouped = X.groupby(self.id_col)
+        if len(grouped) == 1:
+            return X
+        for group_id, group_data in grouped:
 
             padding_length = self.max_length - group_data.shape[0]
             padding_df = pd.DataFrame(
@@ -291,6 +295,13 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
                 padded_X = pd.concat(
                     [padded_X, group_data, padding_df], ignore_index=True
                 )
+
+        if self.target_col in padded_X.columns:
+            padding_label = X[self.target_col].iloc[0]
+            padded_X.loc[
+                padded_X[self.target_col] == self.padding_value, self.target_col
+            ] = padding_label
+
         return padded_X
 
 
@@ -410,10 +421,9 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
 
         # Create an array of starting indices for each window
         start_indices = np.arange(0, n_windows_per_series * self.stride, self.stride)
-
         if (
             self.mode == "inference"
-            and start_indices[-1] + self.window_size + 1 < time_length
+            and start_indices[-1] + self.window_size < time_length
         ):
             # Add an additional window that extends to the end of the series
             last_window_index = time_length - self.window_size

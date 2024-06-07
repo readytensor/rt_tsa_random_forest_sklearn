@@ -9,6 +9,7 @@ from multiprocessing import cpu_count
 from sklearn.metrics import f1_score
 from schema.data_schema import TSAnnotationSchema
 from preprocessing.custom_transformers import PADDING_VALUE
+from typing import Tuple
 
 warnings.filterwarnings("ignore")
 PREDICTOR_FILE_NAME = "predictor.joblib"
@@ -66,7 +67,9 @@ class TSAnnotator:
         )
         return model
 
-    def _get_X_and_y(self, data: np.ndarray, is_train: bool = True) -> np.ndarray:
+    def _get_X_and_y(
+        self, data: np.ndarray, is_train: bool = True
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Extract X (historical target series), y (forecast window target)
         When is_train is True, data contains both history and forecast windows.
         When False, only history is contained.

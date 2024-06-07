@@ -50,7 +50,9 @@ def create_preprocess_pipelines(
         ),
         (
             "padding",
-            transformers.PaddingTransformer(id_col=data_schema.id_col),
+            transformers.PaddingTransformer(
+                id_col=data_schema.id_col, target_col=data_schema.target
+            ),
         ),
         # ("minmax_scaler", scaler),
     ]

@@ -1,5 +1,5 @@
 {
-    "num_trials": 5,
+    "num_trials": 10,
     "hyperparameters": [
       {
         "name": "encode_len",
@@ -7,7 +7,7 @@
         "type": "int",
         "search_type": "uniform",
         "range_low": 2,
-        "range_high": 20
+        "range_high": 100
       }
     ]
   }
