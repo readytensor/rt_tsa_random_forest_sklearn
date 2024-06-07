@@ -101,7 +101,6 @@ class TSAnnotator:
 
     def predict(self, data):
         X, window_ids = self._get_X_and_y(data, is_train=False)
-
         preds = self.model.predict_proba(X)
         for i in range(len(preds)):
             if preds[i].shape[1] > len(self.data_schema.target_classes):

@@ -107,6 +107,7 @@ def run_training(
 
                 hyperparameters.update(tuned_hyperparameters)
 
+            logger.info("Fitting preprocessing pipelines...")
             training_pipeline, inference_pipeline = get_preprocessing_pipelines(
                 data_schema,
                 preprocessing_config,
@@ -144,4 +145,4 @@ def run_training(
 
 
 if __name__ == "__main__":
-    run_training(run_tuning=True)
+    run_training(run_tuning=False)

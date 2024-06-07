@@ -52,7 +52,7 @@ def create_preprocess_pipelines(
             "padding",
             transformers.PaddingTransformer(id_col=data_schema.id_col),
         ),
-        ("minmax_scaler", scaler),
+        # ("minmax_scaler", scaler),
     ]
     training_steps = common_steps.copy()
     inference_steps = common_steps.copy()

@@ -272,8 +272,10 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         self.max_length = X.groupby(self.id_col).size().max()
+        padded_X = None
         for group in X.groupby(self.id_col):
             group_id, group_data = group
+
             padding_length = self.max_length - group_data.shape[0]
             padding_df = pd.DataFrame(
                 {
@@ -282,9 +284,14 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
                 }
             )
             padding_df[self.id_col] = group_id
-            X = pd.concat([X, padding_df], ignore_index=True)
 
-        return X
+            if padded_X is None:
+                padded_X = pd.concat([group_data, padding_df], ignore_index=True)
+            else:
+                padded_X = pd.concat(
+                    [padded_X, group_data, padding_df], ignore_index=True
+                )
+        return padded_X
 
 
 class ReshaperToThreeD(BaseEstimator, TransformerMixin):
@@ -399,7 +406,7 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
             )
 
         # Calculate the total number of windows per series
-        n_windows_per_series = (time_length - self.window_size) // self.stride + 1
+        n_windows_per_series = 1 + (time_length - self.window_size) // self.stride
 
         # Create an array of starting indices for each window
         start_indices = np.arange(0, n_windows_per_series * self.stride, self.stride)
@@ -409,10 +416,8 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
             and start_indices[-1] + self.window_size + 1 < time_length
         ):
             # Add an additional window that extends to the end of the series
-            last_window = np.arange(
-                time_length - self.window_size - 1, time_length - 1, self.stride
-            )
-            start_indices = np.append(start_indices, last_window)
+            last_window_index = time_length - self.window_size
+            start_indices = np.append(start_indices, last_window_index)
 
         # Use broadcasting to generate window indices
         window_indices = start_indices[:, None] + np.arange(self.window_size)
@@ -421,15 +426,11 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
         windows = X[:, window_indices, :]
         windows = windows.reshape(-1, self.window_size, n_features)
 
-        if self.max_windows and windows.shape[0] > self.max_windows:
-            indices = np.random.choice(
-                windows.shape[0], self.max_windows, replace=False
-            )
-            windows = windows[indices]
+        # Remove windows that are full of padding values
+        all_padding = windows[:, :, 1] == PADDING_VALUE
+        all_padding = all_padding.all(axis=1)
 
-        all_padding = np.all(windows == PADDING_VALUE, axis=(1, 2))
         windows = windows[~all_padding]
-
         return windows
 
 

@@ -26,8 +26,6 @@ def create_predictions_dataframe(
     pred_input: pd.DataFrame,
     predictions_arr: np.ndarray,
     prediction_field_name: str,
-    id_field_name: str,
-    time_field_name: str,
     label_encoder: object,
     data_schema: object,
 ) -> pd.DataFrame:
@@ -38,32 +36,18 @@ def create_predictions_dataframe(
         pred_input (pd.DataFrame): Test data input.
         predictions_arr (np.ndarray): Forecast from forecasting model.
         prediction_field_name (str): Field name to use for forecast values.
-        id_field_name (str): Name for the id field.
-        time_field_name (str): Name for the time field.
         label_encoder (object): Label encoder object.
         data_schema (object): Data schema object.
 
     Returns:
         Predictions as a pandas dataframe
     """
-    original_time_col = pred_input[time_field_name].values
-    padded_input = pred_input.copy()
-    predictions_df = padded_input[[id_field_name, time_field_name]].copy()
-    predictions_list = predictions_arr.tolist()[: len(predictions_df)]
-
-    if len(predictions_list) < len(predictions_df):
-        predictions_list += [predictions_list[-1]] * (
-            len(predictions_df) - len(predictions_list)
-        )
-    predictions_df[prediction_field_name] = predictions_list
-    predictions_df[time_field_name] = original_time_col
-
-    labels = label_encoder.inverse_transform(
-        predictions_df.rename(columns={prediction_field_name: data_schema.target})
-    )[data_schema.target]
-
-    predictions_df[prediction_field_name] = labels
-
+    predictions_df = pred_input.copy()
+    predictions_df[data_schema.target] = predictions_arr
+    predictions_df = label_encoder.inverse_transform(predictions_df)
+    predictions_df = predictions_df.rename(
+        columns={data_schema.target: prediction_field_name}
+    )
     return predictions_df
 
 
@@ -143,10 +127,15 @@ def run_batch_predictions(
                 pred_input=validated_test_data,
                 predictions_arr=predictions_arr,
                 prediction_field_name=prediction_field_name,
-                id_field_name=data_schema.id_col,
-                time_field_name=data_schema.time_col,
                 label_encoder=label_encoder,
                 data_schema=data_schema,
+            )
+
+            predictions_df = validate_predictions(
+                predictions_df,
+                data_schema,
+                prediction_field_name,
+                len(validated_test_data),
             )
 
         logger.info("Saving predictions dataframe...")
