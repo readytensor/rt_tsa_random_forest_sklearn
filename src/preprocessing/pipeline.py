@@ -18,7 +18,6 @@ def create_preprocess_pipelines(
         data_schema: The schema of the data, containing information like column names.
         preprocessing_config (dict): Configuration parameters for preprocessing, like scaler bounds.
         encode_len (int): The length of the encoding window.
-        pipeline_type (str): The type of the pipeline, either 'train' or 'inference'.
 
     Returns:
         Tuple[Pipeline, Pipeline]: Tuple of training and inference pipelines
@@ -100,8 +99,9 @@ def create_preprocess_pipelines(
                 "window_generator",
                 transformers.TimeSeriesWindowGenerator(
                     window_size=encode_len,
-                    stride=encode_len,
-                    max_windows=preprocessing_config["max_windows"],
+                    stride=encode_len // 2,
+                    max_windows=None,
+                    mode="inference",
                 ),
             ),
         ]

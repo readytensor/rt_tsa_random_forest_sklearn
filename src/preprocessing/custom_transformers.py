@@ -44,7 +44,7 @@ class ColumnSelector(BaseEstimator, TransformerMixin):
             pandas.DataFrame: The transformed data.
         """
         if self.selector_type == "keep":
-            retained_cols = [col for col in X.columns if col in self.columns]
+            retained_cols = [col for col in self.columns if col in X.columns]
             X = X[retained_cols].copy()
         elif self.selector_type == "drop":
             dropped_cols = [col for col in X.columns if col in self.columns]
@@ -296,6 +296,8 @@ class ReshaperToThreeD(BaseEstimator, TransformerMixin):
             self.value_columns = [value_columns]
         else:
             self.value_columns = value_columns
+        # ensure id and time columns are included to be able to join the windows during inference
+        self.value_columns = [id_col, time_col] + self.value_columns
         self.target_column = target_column
         self.id_vals = None
         self.fitted_value_columns = None
@@ -348,17 +350,26 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
     A transformer for generating windows from time-series data.
     """
 
-    def __init__(self, window_size: int, stride: int = 1, max_windows: int = 10000):
+    def __init__(
+        self,
+        window_size: int,
+        stride: int = 1,
+        max_windows: int = None,
+        mode: str = "train",
+    ):
         """
         Initializes the TimeSeriesWindowGenerator.
 
         Args:
             window_size (int): The size of each window (W).
             stride (int): The stride between each window.
+            max_windows (int): The maximum number of windows to generate.
+            mode (str): The mode of the transformer. Must be either 'train' or 'inference'.
         """
         self.window_size = window_size
         self.stride = stride
         self.max_windows = max_windows
+        self.mode = mode
 
     def fit(self, X, y=None):
         """
@@ -388,10 +399,20 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
             )
 
         # Calculate the total number of windows per series
-        n_windows_per_series = 1 + (time_length - self.window_size) // self.stride
+        n_windows_per_series = (time_length - self.window_size) // self.stride + 1
 
         # Create an array of starting indices for each window
         start_indices = np.arange(0, n_windows_per_series * self.stride, self.stride)
+
+        if (
+            self.mode == "inference"
+            and start_indices[-1] + self.window_size + 1 < time_length
+        ):
+            # Add an additional window that extends to the end of the series
+            last_window = np.arange(
+                time_length - self.window_size - 1, time_length - 1, self.stride
+            )
+            start_indices = np.append(start_indices, last_window)
 
         # Use broadcasting to generate window indices
         window_indices = start_indices[:, None] + np.arange(self.window_size)
@@ -400,7 +421,7 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
         windows = X[:, window_indices, :]
         windows = windows.reshape(-1, self.window_size, n_features)
 
-        if windows.shape[0] > self.max_windows:
+        if self.max_windows and windows.shape[0] > self.max_windows:
             indices = np.random.choice(
                 windows.shape[0], self.max_windows, replace=False
             )
@@ -408,6 +429,7 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
 
         all_padding = np.all(windows == PADDING_VALUE, axis=(1, 2))
         windows = windows[~all_padding]
+
         return windows
 
 

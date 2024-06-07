@@ -8,6 +8,7 @@ from sklearn.exceptions import NotFittedError
 from multiprocessing import cpu_count
 from sklearn.metrics import f1_score
 from schema.data_schema import TSAnnotationSchema
+from preprocessing.custom_transformers import PADDING_VALUE
 
 warnings.filterwarnings("ignore")
 PREDICTOR_FILE_NAME = "predictor.joblib"
@@ -77,7 +78,8 @@ class TSAnnotator:
                     f"Training data expected to have {self.encode_len}"
                     f" length on axis 1. Found length {T}"
                 )
-            X = data[:, :, :-1].reshape(N, -1)  # shape = [N, T*D]
+            # we excluded the first 2 dimensions (id, time) and the last dimension (target)
+            X = data[:, :, 2:-1].reshape(N, -1)  # shape = [N, T*D]
             y = data[:, :, -1]  # shape = [N, T]
         else:
             # for inference
@@ -86,8 +88,9 @@ class TSAnnotator:
                     f"Inference data length expected to be >= {self.encode_len}"
                     f" on axis 1. Found length {T}"
                 )
-            X = data.reshape(N, -1)
-            y = None
+            # X = data.reshape(N, -1)
+            X = data[:, :, 2:].reshape(N, -1)
+            y = data[:, :, 0:2]
         return X, y
 
     def fit(self, train_data):
@@ -97,7 +100,7 @@ class TSAnnotator:
         return self.model
 
     def predict(self, data):
-        X = self._get_X_and_y(data, is_train=False)[0]
+        X, window_ids = self._get_X_and_y(data, is_train=False)
 
         preds = self.model.predict_proba(X)
         for i in range(len(preds)):
@@ -105,8 +108,25 @@ class TSAnnotator:
                 preds[i] = preds[i][:, :-1]
         preds = np.array(preds)
         preds = preds.transpose(1, 0, 2)
-        preds = np.argmax(preds, axis=-1).flatten()
-        return preds
+
+        prob_dict = {}
+
+        for index, prediction in enumerate(preds):
+            series_id = window_ids[index][0][0]
+            for step_index, step in enumerate(prediction):
+                step_id = window_ids[index][step_index][1]
+                step_id = (series_id, step_id)
+                prob_dict[step_id] = prob_dict.get(step_id, []) + [step]
+
+        prob_dict = {
+            k: np.mean(np.array(v), axis=0)
+            for k, v in prob_dict.items()
+            if k[1] != PADDING_VALUE
+        }
+
+        final_predictions = {k: np.argmax(v) for k, v in prob_dict.items()}
+        final_predictions = np.array([np.argmax(v) for v in prob_dict.values()])
+        return final_predictions
 
     def evaluate(self, test_data):
         """Evaluate the model and return the loss and metrics"""
