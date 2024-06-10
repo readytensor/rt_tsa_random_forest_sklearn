@@ -126,9 +126,9 @@ class TSAnnotator:
             if k[1] != PADDING_VALUE
         }
 
-        final_predictions = {k: np.argmax(v) for k, v in prob_dict.items()}
-        final_predictions = np.array([np.argmax(v) for v in prob_dict.values()])
-        return final_predictions
+        sorted_dict = {key: prob_dict[key] for key in sorted(prob_dict.keys())}
+        probabilities = np.vstack(sorted_dict.values())
+        return probabilities
 
     def evaluate(self, test_data):
         """Evaluate the model and return the loss and metrics"""

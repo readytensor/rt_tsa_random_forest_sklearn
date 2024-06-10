@@ -35,7 +35,7 @@ def create_predictions_dataframe(
     Args:
         pred_input (pd.DataFrame): Test data input.
         predictions_arr (np.ndarray): Forecast from forecasting model.
-        prediction_field_name (str): Field name to use for forecast values.
+        prediction_field_name (str): Name of the column containing the predictions.
         label_encoder (object): Label encoder object.
         data_schema (object): Data schema object.
 
@@ -43,11 +43,17 @@ def create_predictions_dataframe(
         Predictions as a pandas dataframe
     """
     predictions_df = pred_input.copy()
-    predictions_df[data_schema.target] = predictions_arr
-    predictions_df = label_encoder.inverse_transform(predictions_df)
-    predictions_df = predictions_df.rename(
-        columns={data_schema.target: prediction_field_name}
+    class_names = list(label_encoder.encoders[data_schema.target].keys())
+    predictions_df[class_names] = predictions_arr
+
+    predictions_df = predictions_df[
+        [data_schema.id_col, data_schema.time_col] + class_names
+    ]
+    predictions_df[prediction_field_name] = predictions_df[class_names].idxmax(axis=1)
+    predictions_df[prediction_field_name] = predictions_df[prediction_field_name].map(
+        label_encoder.encoders[data_schema.target]
     )
+
     return predictions_df
 
 
@@ -134,7 +140,6 @@ def run_batch_predictions(
             predictions_df = validate_predictions(
                 predictions_df,
                 data_schema,
-                prediction_field_name,
                 len(validated_test_data),
             )
 

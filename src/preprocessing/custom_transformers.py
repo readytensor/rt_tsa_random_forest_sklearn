@@ -273,6 +273,7 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+
         self.max_length = X.groupby(self.id_col).size().max()
         padded_X = None
         grouped = X.groupby(self.id_col)
@@ -301,6 +302,8 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
             padded_X.loc[
                 padded_X[self.target_col] == self.padding_value, self.target_col
             ] = padding_label
+            label_dtype = X[self.target_col].dtype
+            padded_X[self.target_col] = padded_X[self.target_col].astype(label_dtype)
 
         return padded_X
 

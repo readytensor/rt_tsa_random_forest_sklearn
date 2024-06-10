@@ -5,7 +5,7 @@ from schema.data_schema import TSAnnotationSchema
 
 
 def get_predictions_validator(
-    schema: TSAnnotationSchema, prediction_field_name: str, test_data_length: int
+    schema: TSAnnotationSchema, test_data_length: int
 ) -> BaseModel:
     """
     Returns a dynamic Pydantic data validator class based on the provided schema.
@@ -14,9 +14,8 @@ def get_predictions_validator(
 
     1. That the input DataFrame is not empty.
     2. That the input DataFrame contains the ID field specified in the schema.
-    3. That the input DataFrame contains two fields named as target classes.
-    4. That the input DataFrame contains the prediction field specified in the schema.
-    5. That the length of the input DataFrame is equal to the length of the test data.
+    3. That the input DataFrame contains the time field specified in the schema.
+    4. That the length of the input DataFrame is equal to the length of the test data.
 
 
 
@@ -59,12 +58,6 @@ def get_predictions_validator(
                     f"Time field '{schema.time_col}' is not present in predictions file."
                 )
 
-            if prediction_field_name not in data.columns:
-                raise ValueError(
-                    "ValueError: Malformed predictions file. "
-                    f"Prediction field '{prediction_field_name}' is not present in predictions file."
-                )
-
             if len(data) != test_data_length:
                 raise ValueError(
                     "ValueError: Malformed predictions file. "
@@ -78,7 +71,6 @@ def get_predictions_validator(
 def validate_predictions(
     predictions: pd.DataFrame,
     data_schema: TSAnnotationSchema,
-    prediction_field_name: str,
     test_data_length: int,
 ) -> pd.DataFrame:
     """
@@ -87,14 +79,11 @@ def validate_predictions(
     Args:
         predictions (pd.DataFrame): Predictions data to validate.
         data_schema (TSAnnotationSchema): An instance of TSAnnotationSchema.
-        prediction_field_name (str): The name of the column containing the predictions.
 
     Returns:
         pd.DataFrame: The validated data.
     """
-    DataValidator = get_predictions_validator(
-        data_schema, prediction_field_name, test_data_length
-    )
+    DataValidator = get_predictions_validator(data_schema, test_data_length)
     try:
         validated_data = DataValidator(data=predictions)
         return validated_data.data
