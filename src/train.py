@@ -34,7 +34,6 @@ def run_training(
     default_hyperparameters_file_path: str = paths.DEFAULT_HYPERPARAMETERS_FILE_PATH,
     hpt_specs_file_path: str = paths.HPT_CONFIG_FILE_PATH,
     hpt_results_dir_path: str = paths.HPT_OUTPUTS_DIR,
-    run_tuning: bool = False,
 ) -> None:
     """
     Run the training process and saves model artifacts
@@ -48,7 +47,6 @@ def run_training(
         - default_hyperparameters_file_path (str, optional): The path of the default hyperparameters file.
         - hpt_specs_file_path (str, optional): The path of the hyperparameter tuning specs file.
         - hpt_results_dir_path (str, optional): The directory path to save the hyperparameter tuning results.
-        - run_tuning (bool, optional): Whether to run hyperparameter tuning or not.
     Returns:
         None
     """
@@ -86,7 +84,7 @@ def run_training(
             logger.info("Loading hyperparameters...")
             hyperparameters = read_json_as_dict(default_hyperparameters_file_path)
 
-            if run_tuning:
+            if model_config["run_tuning"]:
                 logger.info("Tuning hyperparameters...")
                 train_split, valid_split = train_test_split(
                     validated_data,
@@ -99,7 +97,7 @@ def run_training(
                     valid_split=valid_split,
                     data_schema=data_schema,
                     hpt_results_dir_path=hpt_results_dir_path,
-                    is_minimize=False,  # scoring metric is accuracy - so maximize it.
+                    is_minimize=False,  # scoring metric is f1-score - so maximize it.
                     default_hyperparameters_file_path=default_hyperparameters_file_path,
                     hpt_specs_file_path=hpt_specs_file_path,
                     preprocessing_config=preprocessing_config,
@@ -145,4 +143,4 @@ def run_training(
 
 
 if __name__ == "__main__":
-    run_training(run_tuning=False)
+    run_training()

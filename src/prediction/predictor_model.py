@@ -83,7 +83,7 @@ class TSAnnotator:
                 )
             # we excluded the first 2 dimensions (id, time) and the last dimension (target)
             X = data[:, :, 2:-1].reshape(N, -1)  # shape = [N, T*D]
-            y = data[:, :, -1]  # shape = [N, T]
+            y = data[:, :, -1].astype(int)  # shape = [N, T]
         else:
             # for inference
             if T < self.encode_len:

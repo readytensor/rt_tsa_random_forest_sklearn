@@ -43,17 +43,15 @@ def create_predictions_dataframe(
         Predictions as a pandas dataframe
     """
     predictions_df = pred_input.copy()
-    class_names = list(label_encoder.encoders[data_schema.target].keys())
+    label_to_int = label_encoder.encoders[data_schema.target]
+    int_to_label = {v: k for k, v in label_to_int.items()}
+    class_names = list(label_to_int.keys())
     predictions_df[class_names] = predictions_arr
 
     predictions_df = predictions_df[
         [data_schema.id_col, data_schema.time_col] + class_names
     ]
     predictions_df[prediction_field_name] = predictions_df[class_names].idxmax(axis=1)
-    predictions_df[prediction_field_name] = predictions_df[prediction_field_name].map(
-        label_encoder.encoders[data_schema.target]
-    )
-
     return predictions_df
 
 

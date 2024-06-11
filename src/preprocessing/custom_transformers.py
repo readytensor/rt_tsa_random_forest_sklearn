@@ -444,6 +444,11 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
         all_padding = all_padding.all(axis=1)
 
         windows = windows[~all_padding]
+
+        # Limit the number of windows if specified by randomly sampling
+        if self.max_windows is not None and len(windows) > self.max_windows:
+            indices = np.random.choice(len(windows), self.max_windows, replace=False)
+            windows = windows[indices]
         return windows
 
 
