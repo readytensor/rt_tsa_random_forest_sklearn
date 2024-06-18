@@ -54,7 +54,7 @@ def create_preprocess_pipelines(
                 id_col=data_schema.id_col, target_col=data_schema.target
             ),
         ),
-        # ("minmax_scaler", scaler),
+        ("minmax_scaler", scaler),
     ]
     training_steps = common_steps.copy()
     inference_steps = common_steps.copy()
