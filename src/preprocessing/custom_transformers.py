@@ -329,7 +329,6 @@ class ReshaperToThreeD(BaseEstimator, TransformerMixin):
             self.value_columns.append(self.target_column)
         self.id_vals = X[[self.id_col]].drop_duplicates().sort_values(by=self.id_col)
         self.id_vals.reset_index(inplace=True, drop=True)
-        self.time_periods = sorted(X[self.time_col].dropna().unique())
         grouped = X.groupby(self.id_col)
         self.T = 0
         for _, group in grouped:

@@ -7,7 +7,7 @@
         "type": "int",
         "search_type": "log-uniform",
         "range_low": 7,
-        "range_high": 50
+        "range_high": 100
       }
     ]
   }

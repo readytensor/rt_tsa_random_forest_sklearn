@@ -44,7 +44,6 @@ def create_predictions_dataframe(
     """
     predictions_df = pred_input.copy()
     label_to_int = label_encoder.encoders[data_schema.target]
-    int_to_label = {v: k for k, v in label_to_int.items()}
     class_names = list(label_to_int.keys())
     predictions_df[class_names] = predictions_arr
 

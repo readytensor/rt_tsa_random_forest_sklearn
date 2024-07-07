@@ -130,16 +130,12 @@ class TSAnnotator:
         probabilities = np.vstack(sorted_dict.values())
         return probabilities
 
-    def evaluate(self, test_data):
+    def evaluate(self, test_data, truth_labels):
         """Evaluate the model and return the loss and metrics"""
-        x_test, y_test = self._get_X_and_y(test_data, is_train=True)
-        if self.model is not None:
-            prediction = self.model.predict(x_test).flatten()
-            y_test = y_test.flatten()
-            f1 = f1_score(y_test, prediction, average="weighted")
-            return f1
-
-        raise NotFittedError("Model is not fitted yet.")
+        predictions = self.predict(test_data)
+        predictions = np.argmax(predictions, axis=1)
+        f1 = f1_score(truth_labels, predictions, average="weighted")
+        return f1
 
     def save(self, model_dir_path: str) -> None:
         """Save the Random Forest TSAnnotator to disk.
@@ -227,15 +223,18 @@ def load_predictor_model(predictor_dir_path: str) -> TSAnnotator:
     return TSAnnotator.load(predictor_dir_path)
 
 
-def evaluate_predictor_model(model: TSAnnotator, test_split: np.ndarray) -> float:
+def evaluate_predictor_model(
+    model: TSAnnotator, test_split: np.ndarray, truth_labels: np.ndarray
+) -> float:
     """
     Evaluate the TSAnnotator model and return the r-squared value.
 
     Args:
         model (TSAnnotator): The TSAnnotator model.
         test_split (np.ndarray): Test data.
+        truth_labels (np.ndarray): The true labels.
 
     Returns:
         float: The r-squared value of the TSAnnotator model.
     """
-    return model.evaluate(test_split)
+    return model.evaluate(test_split, truth_labels)

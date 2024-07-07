@@ -156,6 +156,10 @@ class HyperParameterTuner:
                 training_pipeline, train_split
             )
 
+            label_encoder = training_pipeline.named_steps["target_encoder"].encoders[
+                data_schema.target
+            ]
+
             # train model
             classifier = train_predictor_model(
                 train_data=transformed_data,
@@ -163,13 +167,18 @@ class HyperParameterTuner:
                 hyperparameters=hyperparameters,
             )
 
+            truth_labels = valid_split[data_schema.target].map(label_encoder).values
+            unlabeled_valid_split = valid_split.drop(columns=[data_schema.target])
             _, transformed_valid_data = fit_transform_with_pipeline(
-                inference_pipeline, valid_split
+                inference_pipeline, unlabeled_valid_split
             )
 
             # evaluate the model
             score = round(
-                evaluate_predictor_model(classifier, transformed_valid_data), 6
+                evaluate_predictor_model(
+                    classifier, transformed_valid_data, truth_labels
+                ),
+                6,
             )
             if np.isnan(score) or math.isinf(score):
                 # sometimes loss becomes inf/na, so use a large "bad" value
