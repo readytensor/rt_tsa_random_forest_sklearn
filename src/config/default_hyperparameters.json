@@ -1,5 +1,5 @@
 {
-  "encode_len": 300,
+  "encode_len": 8,
   "n_estimators": 50,
   "random_state": 42
 }
