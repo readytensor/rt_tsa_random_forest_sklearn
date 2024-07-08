@@ -12,6 +12,8 @@ from prediction.predictor_model import evaluate_predictor_model, train_predictor
 from preprocessing.preprocess import (
     get_preprocessing_pipelines,
     fit_transform_with_pipeline,
+    fit_pipeline,
+    transform_data,
 )
 
 HPT_RESULTS_FILE_NAME = "HPT_results.csv"
@@ -160,17 +162,29 @@ class HyperParameterTuner:
                 data_schema.target
             ]
 
+            truth_labels = valid_split[data_schema.target].map(label_encoder).values
+            unlabeled_valid_split = valid_split.drop(columns=[data_schema.target])
+            inference_pipeline = fit_pipeline(inference_pipeline, train_split)
+
+            transformed_valid_data = transform_data(
+                inference_pipeline, unlabeled_valid_split
+            )
+
+            trimmed_encode_length = {"encode_len": transformed_data.shape[1]}
+
+            if transformed_data.shape[1] != transformed_valid_data.shape[1]:
+                print(
+                    "The provided encode length cannot be applied to both datasets as one of them is shorter than encode length."
+                )
+                return 1.0e6
+
+            hyperparameters.update(trimmed_encode_length)
+
             # train model
             classifier = train_predictor_model(
                 train_data=transformed_data,
                 data_schema=data_schema,
                 hyperparameters=hyperparameters,
-            )
-
-            truth_labels = valid_split[data_schema.target].map(label_encoder).values
-            unlabeled_valid_split = valid_split.drop(columns=[data_schema.target])
-            _, transformed_valid_data = fit_transform_with_pipeline(
-                inference_pipeline, unlabeled_valid_split
             )
 
             # evaluate the model

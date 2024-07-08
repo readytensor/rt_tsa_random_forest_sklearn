@@ -8,7 +8,7 @@ from logger import get_logger, log_error
 from prediction.predictor_model import load_predictor_model, predict_with_model
 from preprocessing.preprocess import (
     load_pipeline_of_type,
-    fit_transform_with_pipeline,
+    transform_data,
 )
 from schema.data_schema import load_saved_schema
 from utils import (
@@ -106,14 +106,10 @@ def run_batch_predictions(
             # fit and transform using pipeline and target encoder, then save them
             logger.info("Loading preprocessing pipeline ...")
 
-            training_pipeline = load_pipeline_of_type(
-                preprocessing_dir_path, pipeline_type="training"
-            )
-
             inference_pipeline = load_pipeline_of_type(
                 preprocessing_dir_path, pipeline_type="inference"
             )
-            _, transformed_test_data = fit_transform_with_pipeline(
+            transformed_test_data = transform_data(
                 inference_pipeline, validated_test_data
             )
 
@@ -123,7 +119,7 @@ def run_batch_predictions(
             logger.info("Making predictions...")
             predictions_arr = predict_with_model(predictor_model, transformed_test_data)
 
-            label_encoder = training_pipeline.named_steps["target_encoder"]
+            label_encoder = inference_pipeline.named_steps["target_encoder"]
 
             logger.info("Creating final predictions dataframe...")
             predictions_df = create_predictions_dataframe(

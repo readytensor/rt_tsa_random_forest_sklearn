@@ -46,7 +46,7 @@ def get_data_validator(schema: TSAnnotationSchema, is_train: bool) -> BaseModel:
 
             if schema.id_col not in data.columns:
                 raise ValueError(
-                    f"ID field '{schema.id}' is not present in the given data"
+                    f"ID field '{schema.id_col}' is not present in the given data"
                 )
 
             if is_train:

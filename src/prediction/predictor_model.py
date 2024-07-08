@@ -91,7 +91,6 @@ class TSAnnotator:
                     f"Inference data length expected to be >= {self.encode_len}"
                     f" on axis 1. Found length {T}"
                 )
-            # X = data.reshape(N, -1)
             X = data[:, :, 2:].reshape(N, -1)
             y = data[:, :, 0:2]
         return X, y

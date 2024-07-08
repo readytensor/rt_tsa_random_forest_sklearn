@@ -72,7 +72,11 @@ def read_csv_in_directory(file_dir_path: str) -> pd.DataFrame:
     if not os.path.exists(file_dir_path):
         raise FileNotFoundError(f"Directory does not exist: {file_dir_path}")
 
-    csv_files = [file for file in os.listdir(file_dir_path) if file.endswith(".csv")]
+    csv_files = [
+        file
+        for file in os.listdir(file_dir_path)
+        if file.endswith(".csv") or file.endswith(".zip")
+    ]
 
     if not csv_files:
         raise ValueError(f"No CSV file found in directory {file_dir_path}")

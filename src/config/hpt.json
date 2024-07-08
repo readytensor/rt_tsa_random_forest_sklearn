@@ -6,8 +6,8 @@
         "short_desc": "The window size.",
         "type": "int",
         "search_type": "log-uniform",
-        "range_low": 7,
-        "range_high": 100
+        "range_low": 3,
+        "range_high": 500
       }
     ]
   }
