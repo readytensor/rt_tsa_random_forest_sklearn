@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.exceptions import NotFittedError
 from multiprocessing import cpu_count
 from sklearn.metrics import f1_score
-from schema.data_schema import TSAnnotationSchema
+from schema.data_schema import TimeStepClassificationSchema
 from preprocessing.custom_transformers import PADDING_VALUE
 from typing import Tuple
 
@@ -22,32 +22,35 @@ n_jobs = max(1, n_cpus - 1)
 print(f"Using n_jobs = {n_jobs}")
 
 
-class TSAnnotator:
-    """Random Forest Timeseries Annotator.
+class TimeStepClassifier:
+    """Random Forest TimeStepClassifier.
 
     This class provides a consistent interface that can be used with other
-    TSAnnotator models.
+    TimeStepClassifier models.
     """
 
-    MODEL_NAME = "Random_Forest_Timeseries_Annotator"
+    MODEL_NAME = "Random_Forest_TimeStepClassifier"
 
     def __init__(
         self,
-        data_schema: TSAnnotationSchema,
+        n_classes:int,
         encode_len: int,
         n_estimators: int = 100,
-        max_depth: int = None,
+        max_depth: int = 5,
         min_samples_split: int = 2,
         **kwargs,
     ):
         """
-        Construct a new Random Forest TSAnnotator.
+        Construct a new Random Forest TimeStepClassifier.
 
         Args:
+            n_classes (int): Number of target classes.
             encode_len (int): Encoding (history) length.
-            n_neighbors (int): Number of neighbors to use.
+            n_estimators (int): Number of trees in the forest.
+            max_depth (int): Maximum depth of the tree.
+            min_samples_split (int): Minimum number of samples required to split an internal node.
         """
-        self.data_schema = data_schema
+        self.n_classes = n_classes
         self.encode_len = int(encode_len)
         self.n_estimators = int(n_estimators)
         self.max_depth = max_depth
@@ -57,7 +60,7 @@ class TSAnnotator:
         self._is_trained = False
 
     def build_model(self) -> RandomForestClassifier:
-        """Build a new Random Forest regressor."""
+        """Build a new Random Forest classifier."""
         model = RandomForestClassifier(
             n_estimators=self.n_estimators,
             max_depth=self.max_depth,
@@ -104,9 +107,9 @@ class TSAnnotator:
     def predict(self, data):
         X, window_ids = self._get_X_and_y(data, is_train=False)
         preds = self.model.predict_proba(X)
-        for i in range(len(preds)):
-            if preds[i].shape[1] > len(self.data_schema.target_classes):
-                preds[i] = preds[i][:, :-1]
+        for i, pred in enumerate(preds):
+            if pred.shape[1] > self.n_classes:
+                preds[i] = pred[:, :-1]
         preds = np.array(preds)
         preds = preds.transpose(1, 0, 2)
 
@@ -126,7 +129,7 @@ class TSAnnotator:
         }
 
         sorted_dict = {key: prob_dict[key] for key in sorted(prob_dict.keys())}
-        probabilities = np.vstack(sorted_dict.values())
+        probabilities = np.vstack(list(sorted_dict.values()))
         return probabilities
 
     def evaluate(self, test_data, truth_labels):
@@ -137,7 +140,7 @@ class TSAnnotator:
         return f1
 
     def save(self, model_dir_path: str) -> None:
-        """Save the Random Forest TSAnnotator to disk.
+        """Save the Random Forest TimeStepClassifier to disk.
 
         Args:
             model_dir_path (str): Dir path to which to save the model.
@@ -147,13 +150,13 @@ class TSAnnotator:
         joblib.dump(self, os.path.join(model_dir_path, PREDICTOR_FILE_NAME))
 
     @classmethod
-    def load(cls, model_dir_path: str) -> "TSAnnotator":
-        """Load the Random Forest TSAnnotator from disk.
+    def load(cls, model_dir_path: str) -> "TimeStepClassifier":
+        """Load the Random Forest TimeStepClassifier from disk.
 
         Args:
             model_dir_path (str): Dir path to the saved model.
         Returns:
-            TSAnnotator: A new instance of the loaded Random Forest TSAnnotator.
+            TimeStepClassifier: A new instance of the loaded Random Forest TimeStepClassifier.
         """
         model = joblib.load(os.path.join(model_dir_path, PREDICTOR_FILE_NAME))
         return model
@@ -161,47 +164,47 @@ class TSAnnotator:
 
 def train_predictor_model(
     train_data: np.ndarray,
-    data_schema: TSAnnotationSchema,
+    data_schema: TimeStepClassificationSchema,
     hyperparameters: dict,
-) -> TSAnnotator:
+) -> TimeStepClassifier:
     """
-    Instantiate and train the TSAnnotator model.
+    Instantiate and train the TimeStepClassifier model.
 
     Args:
         train_data (np.ndarray): The train split from training data.
-        hyperparameters (dict): Hyperparameters for the TSAnnotator.
+        hyperparameters (dict): Hyperparameters for the TimeStepClassifier.
 
     Returns:
-        'TSAnnotator': The TSAnnotator model
+        'TimeStepClassifier': The TimeStepClassifier model
     """
-    model = TSAnnotator(
-        data_schema=data_schema,
+    model = TimeStepClassifier(
+        n_classes=len(data_schema.target_classes),
         **hyperparameters,
     )
     model.fit(train_data=train_data)
     return model
 
 
-def predict_with_model(model: TSAnnotator, test_data: np.ndarray) -> np.ndarray:
+def predict_with_model(model: TimeStepClassifier, test_data: np.ndarray) -> np.ndarray:
     """
     Make forecast.
 
     Args:
-        model (TSAnnotator): The TSAnnotator model.
-        test_data (np.ndarray): The test input data for annotation.
+        model (TimeStepClassifier): The TimeStepClassifier model.
+        test_data (np.ndarray): The test input data for classification.
 
     Returns:
-        np.ndarray: The annotated data.
+        np.ndarray: The predictions.
     """
     return model.predict(test_data)
 
 
-def save_predictor_model(model: TSAnnotator, predictor_dir_path: str) -> None:
+def save_predictor_model(model: TimeStepClassifier, predictor_dir_path: str) -> None:
     """
-    Save the TSAnnotator model to disk.
+    Save the TimeStepClassifier model to disk.
 
     Args:
-        model (TSAnnotator): The TSAnnotator model to save.
+        model (TimeStepClassifier): The TimeStepClassifier model to save.
         predictor_dir_path (str): Dir path to which to save the model.
     """
     if not os.path.exists(predictor_dir_path):
@@ -209,31 +212,31 @@ def save_predictor_model(model: TSAnnotator, predictor_dir_path: str) -> None:
     model.save(predictor_dir_path)
 
 
-def load_predictor_model(predictor_dir_path: str) -> TSAnnotator:
+def load_predictor_model(predictor_dir_path: str) -> TimeStepClassifier:
     """
-    Load the TSAnnotator model from disk.
+    Load the TimeStepClassifier model from disk.
 
     Args:
         predictor_dir_path (str): Dir path where model is saved.
 
     Returns:
-        TSAnnotator: A new instance of the loaded TSAnnotator model.
+        TimeStepClassifier: A new instance of the loaded TimeStepClassifier model.
     """
-    return TSAnnotator.load(predictor_dir_path)
+    return TimeStepClassifier.load(predictor_dir_path)
 
 
 def evaluate_predictor_model(
-    model: TSAnnotator, test_split: np.ndarray, truth_labels: np.ndarray
+    model: TimeStepClassifier, test_split: np.ndarray, truth_labels: np.ndarray
 ) -> float:
     """
-    Evaluate the TSAnnotator model and return the r-squared value.
+    Evaluate the TimeStepClassifier model and return the r-squared value.
 
     Args:
-        model (TSAnnotator): The TSAnnotator model.
+        model (TimeStepClassifier): The TimeStepClassifier model.
         test_split (np.ndarray): Test data.
         truth_labels (np.ndarray): The true labels.
 
     Returns:
-        float: The r-squared value of the TSAnnotator model.
+        float: The r-squared value of the TimeStepClassifier model.
     """
     return model.evaluate(test_split, truth_labels)
