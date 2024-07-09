@@ -123,8 +123,8 @@ def run_training(
             trimmed_encode_len = transformed_data.shape[1]
             hyperparameters["encode_len"] = trimmed_encode_len
 
-            logger.info("Training annotator...")
-            annotator = train_predictor_model(
+            logger.info("Training classifier...")
+            classifier = train_predictor_model(
                 train_data=transformed_data,
                 data_schema=data_schema,
                 hyperparameters=hyperparameters,
@@ -135,8 +135,8 @@ def run_training(
         save_pipelines(trained_pipeline, inference_pipeline, preprocessing_dir_path)
 
         # save predictor model
-        logger.info("Saving annotator...")
-        save_predictor_model(annotator, predictor_dir_path)
+        logger.info("Saving classifier...")
+        save_predictor_model(classifier, predictor_dir_path)
 
     except Exception as exc:
         err_msg = "Error occurred during training."
