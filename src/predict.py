@@ -133,7 +133,6 @@ def run_batch_predictions(
             predictions_df = validate_predictions(
                 predictions_df,
                 data_schema,
-                len(validated_test_data),
             )
 
         logger.info("Saving predictions dataframe...")
