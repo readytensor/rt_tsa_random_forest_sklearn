@@ -8,7 +8,6 @@ from sklearn.exceptions import NotFittedError
 from multiprocessing import cpu_count
 from sklearn.metrics import f1_score
 from schema.data_schema import TimeStepClassificationSchema
-from preprocessing.custom_transformers import PADDING_VALUE
 from typing import Tuple
 
 warnings.filterwarnings("ignore")
@@ -33,8 +32,9 @@ class TimeStepClassifier:
 
     def __init__(
         self,
-        n_classes:int,
+        n_classes: int,
         encode_len: int,
+        padding_value: float,
         n_estimators: int = 100,
         max_depth: int = 5,
         min_samples_split: int = 2,
@@ -46,12 +46,14 @@ class TimeStepClassifier:
         Args:
             n_classes (int): Number of target classes.
             encode_len (int): Encoding (history) length.
+            padding_value (float): Padding value.
             n_estimators (int): Number of trees in the forest.
             max_depth (int): Maximum depth of the tree.
             min_samples_split (int): Minimum number of samples required to split an internal node.
         """
         self.n_classes = n_classes
         self.encode_len = int(encode_len)
+        self.padding_value = padding_value
         self.n_estimators = int(n_estimators)
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
@@ -125,7 +127,7 @@ class TimeStepClassifier:
         prob_dict = {
             k: np.mean(np.array(v), axis=0)
             for k, v in prob_dict.items()
-            if k[1] != PADDING_VALUE
+            if k[1] != self.padding_value
         }
 
         sorted_dict = {key: prob_dict[key] for key in sorted(prob_dict.keys())}
@@ -166,19 +168,23 @@ def train_predictor_model(
     train_data: np.ndarray,
     data_schema: TimeStepClassificationSchema,
     hyperparameters: dict,
+    padding_value: float,
 ) -> TimeStepClassifier:
     """
     Instantiate and train the TimeStepClassifier model.
 
     Args:
         train_data (np.ndarray): The train split from training data.
+        data_schema (TimeStepClassificationSchema): The data schema.
         hyperparameters (dict): Hyperparameters for the TimeStepClassifier.
+        padding_value (float): The padding value.
 
     Returns:
         'TimeStepClassifier': The TimeStepClassifier model
     """
     model = TimeStepClassifier(
         n_classes=len(data_schema.target_classes),
+        padding_value=padding_value,
         **hyperparameters,
     )
     model.fit(train_data=train_data)

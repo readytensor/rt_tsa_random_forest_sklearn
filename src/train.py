@@ -128,6 +128,7 @@ def run_training(
                 train_data=transformed_data,
                 data_schema=data_schema,
                 hyperparameters=hyperparameters,
+                padding_value=preprocessing_config["padding_value"],
             )
 
         # Save pipelines

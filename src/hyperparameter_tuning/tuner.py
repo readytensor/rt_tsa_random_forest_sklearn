@@ -185,6 +185,7 @@ class HyperParameterTuner:
                 train_data=transformed_data,
                 data_schema=data_schema,
                 hyperparameters=hyperparameters,
+                padding_value=preprocessing_config["padding_value"],
             )
 
             # evaluate the model

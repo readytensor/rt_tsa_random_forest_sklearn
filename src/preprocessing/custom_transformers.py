@@ -5,8 +5,6 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import MinMaxScaler
 
-PADDING_VALUE = -1
-
 
 class ColumnSelector(BaseEstimator, TransformerMixin):
     """Selects or drops specified columns."""
@@ -378,6 +376,7 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         window_size: int,
+        padding_value: float,
         stride: int = 1,
         max_windows: int = None,
         mode: str = "train",
@@ -387,11 +386,13 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
 
         Args:
             window_size (int): The size of each window (W).
+            padding_value (float): The value to use for padding.
             stride (int): The stride between each window.
             max_windows (int): The maximum number of windows to generate.
             mode (str): The mode of the transformer. Must be either 'train' or 'inference'.
         """
         self.window_size = window_size
+        self.padding_value = padding_value
         self.stride = stride
         self.max_windows = max_windows
         self.mode = mode
@@ -446,7 +447,7 @@ class TimeSeriesWindowGenerator(BaseEstimator, TransformerMixin):
         windows = windows.reshape(-1, self.window_size, n_features)
 
         # Remove windows that are full of padding values
-        all_padding = windows[:, :, 1] == PADDING_VALUE
+        all_padding = windows[:, :, 1] == self.padding_value
         all_padding = all_padding.all(axis=1)
 
         windows = windows[~all_padding]
@@ -505,55 +506,6 @@ class SeriesLengthTrimmer(BaseEstimator, TransformerMixin):
         if time_length > self.trimmed_len:
             X = X[:, -self.trimmed_len :, :]
         return X
-
-
-class LeftRightFlipper(BaseEstimator, TransformerMixin):
-    """
-    A transformer that augments a dataset by adding a left-right flipped version of each tensor.
-
-    This transformer flips each tensor in the dataset along a specified axis and then concatenates
-    the flipped version with the original dataset, effectively doubling its size.
-
-    Attributes:
-        axis_to_flip (int): The axis along which the tensors will be flipped.
-    """
-
-    def __init__(self, axis_to_flip: int):
-        """
-        Initializes the LeftRightFlipper.
-
-        Args:
-            axis_to_flip (int): The axis along which the tensors will be flipped.
-        """
-        self.axis_to_flip = axis_to_flip
-
-    def fit(self, X: np.ndarray, y: None = None) -> "LeftRightFlipper":
-        """
-        Fit method for the transformer. This transformer does not learn anything from the data
-        and hence fit is a no-op.
-
-        Args:
-            X (np.ndarray): The input data.
-            y (None): Ignored. Exists for compatibility with the sklearn transformer interface.
-
-        Returns:
-            LeftRightFlipper: The fitted transformer.
-        """
-        return self
-
-    def transform(self, X: np.ndarray) -> np.ndarray:
-        """
-        Transforms the input data by adding a flipped version of each tensor.
-
-        Args:
-            X (np.ndarray): The input data, a collection of tensors.
-
-        Returns:
-            np.ndarray: The augmented data, consisting of the original tensors and their
-                        flipped versions.
-        """
-        X_flipped = np.flip(X, axis=self.axis_to_flip)
-        return np.concatenate([X_flipped, X], axis=0)
 
 
 class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
