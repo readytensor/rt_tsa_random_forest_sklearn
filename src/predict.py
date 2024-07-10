@@ -107,7 +107,7 @@ def run_batch_predictions(
             logger.info("Loading preprocessing pipeline ...")
 
             inference_pipeline = load_pipeline_of_type(
-                preprocessing_dir_path, pipeline_type="inference"
+                preprocessing_dir_path, pipeline_type="training"
             )
             transformed_test_data = transform_data(
                 inference_pipeline, validated_test_data
@@ -133,7 +133,6 @@ def run_batch_predictions(
             predictions_df = validate_predictions(
                 predictions_df,
                 data_schema,
-                len(validated_test_data),
             )
 
         logger.info("Saving predictions dataframe...")
