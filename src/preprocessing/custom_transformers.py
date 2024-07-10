@@ -325,7 +325,6 @@ class ReshaperToThreeD(BaseEstimator, TransformerMixin):
         self.cols_to_reshape = [id_col, time_col] + self.value_columns
         self.target_column = target_column
         self.id_vals = None
-        self.time_periods = None
 
     def fit(self, X, y=None):
         return self
@@ -333,7 +332,6 @@ class ReshaperToThreeD(BaseEstimator, TransformerMixin):
     def transform(self, X):
         self.id_vals = X[[self.id_col]].drop_duplicates().sort_values(by=self.id_col)
         self.id_vals.reset_index(inplace=True, drop=True)
-        self.time_periods = sorted(X[self.time_col].dropna().unique())
         reshaped_columns = [c for c in self.cols_to_reshape if c in X.columns]
         if self.target_column in X.columns:
             reshaped_columns.append(self.target_column)
