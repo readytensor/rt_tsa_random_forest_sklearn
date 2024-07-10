@@ -72,15 +72,6 @@ def create_preprocess_pipelines(
                 target_column=data_schema.target,
             ),
         ),
-        # (
-        #     "window_generator",
-        #     transformers.TimeSeriesWindowGenerator(
-        #         window_size=encode_len,
-        #         padding_value=preprocessing_config["padding_value"],
-        #         stride=1,
-        #         max_windows=preprocessing_config["max_windows"],
-        #     ),
-        # ),
     ]
     training_steps = common_steps.copy()
     inference_steps = common_steps.copy()
