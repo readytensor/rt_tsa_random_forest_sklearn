@@ -263,7 +263,8 @@ class DataFrameSorter(BaseEstimator, TransformerMixin):
 
 
 class PaddingTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, id_col: str, target_col: str, padding_value: float) -> None:
+    def __init__(self, id_col: str, target_col: str, 
+                 padding_value: float) -> None:
         super().__init__()
         self.id_col = id_col
         self.target_col = target_col
@@ -301,10 +302,9 @@ class PaddingTransformer(BaseEstimator, TransformerMixin):
             num_padding_entries = padded_X[
                 padded_X[self.target_col] == self.padding_value
             ].shape[0]
-            random_labels = np.random.choice(labels, num_padding_entries)
             padded_X.loc[
                 padded_X[self.target_col] == self.padding_value, self.target_col
-            ] = random_labels
+            ] = [labels[0]] * num_padding_entries
             label_dtype = X[self.target_col].dtype
             padded_X[self.target_col] = padded_X[self.target_col].astype(label_dtype)
 
@@ -325,7 +325,6 @@ class ReshaperToThreeD(BaseEstimator, TransformerMixin):
         self.cols_to_reshape = [id_col, time_col] + self.value_columns
         self.target_column = target_column
         self.id_vals = None
-        self.time_periods = None
 
     def fit(self, X, y=None):
         return self
@@ -333,7 +332,6 @@ class ReshaperToThreeD(BaseEstimator, TransformerMixin):
     def transform(self, X):
         self.id_vals = X[[self.id_col]].drop_duplicates().sort_values(by=self.id_col)
         self.id_vals.reset_index(inplace=True, drop=True)
-        self.time_periods = sorted(X[self.time_col].dropna().unique())
         reshaped_columns = [c for c in self.cols_to_reshape if c in X.columns]
         if self.target_column in X.columns:
             reshaped_columns.append(self.target_column)
@@ -509,55 +507,6 @@ class SeriesLengthTrimmer(BaseEstimator, TransformerMixin):
         return X
 
 
-class LeftRightFlipper(BaseEstimator, TransformerMixin):
-    """
-    A transformer that augments a dataset by adding a left-right flipped version of each tensor.
-
-    This transformer flips each tensor in the dataset along a specified axis and then concatenates
-    the flipped version with the original dataset, effectively doubling its size.
-
-    Attributes:
-        axis_to_flip (int): The axis along which the tensors will be flipped.
-    """
-
-    def __init__(self, axis_to_flip: int):
-        """
-        Initializes the LeftRightFlipper.
-
-        Args:
-            axis_to_flip (int): The axis along which the tensors will be flipped.
-        """
-        self.axis_to_flip = axis_to_flip
-
-    def fit(self, X: np.ndarray, y: None = None) -> "LeftRightFlipper":
-        """
-        Fit method for the transformer. This transformer does not learn anything from the data
-        and hence fit is a no-op.
-
-        Args:
-            X (np.ndarray): The input data.
-            y (None): Ignored. Exists for compatibility with the sklearn transformer interface.
-
-        Returns:
-            LeftRightFlipper: The fitted transformer.
-        """
-        return self
-
-    def transform(self, X: np.ndarray) -> np.ndarray:
-        """
-        Transforms the input data by adding a flipped version of each tensor.
-
-        Args:
-            X (np.ndarray): The input data, a collection of tensors.
-
-        Returns:
-            np.ndarray: The augmented data, consisting of the original tensors and their
-                        flipped versions.
-        """
-        X_flipped = np.flip(X, axis=self.axis_to_flip)
-        return np.concatenate([X_flipped, X], axis=0)
-
-
 class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
     """
     Scales the history and forecast parts of a time-series based on history data.
@@ -614,4 +563,5 @@ class TimeSeriesMinMaxScaler(BaseEstimator, TransformerMixin):
         X_scaled.loc[:, self.columns] = self.scaler.transform(
             X_scaled.loc[:, self.columns]
         )
+        
         return X_scaled
