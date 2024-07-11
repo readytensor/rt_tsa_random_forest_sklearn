@@ -109,9 +109,6 @@ class TimeStepClassifier:
     def predict(self, data):
         X, window_ids = self._get_X_and_y(data, is_train=False)
         preds = self.model.predict_proba(X)
-        for i, pred in enumerate(preds):
-            if pred.shape[1] > self.n_classes:
-                preds[i] = pred[:, :-1]
         preds = np.array(preds)
         preds = preds.transpose(1, 0, 2)
 
