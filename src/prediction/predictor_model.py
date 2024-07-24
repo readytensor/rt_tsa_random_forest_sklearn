@@ -36,7 +36,7 @@ class TimeStepClassifier:
         encode_len: int,
         padding_value: float,
         n_estimators: int = 100,
-        max_depth: int = None,
+        max_depth: int = 5,
         min_samples_split: int = 2,
         **kwargs,
     ):
