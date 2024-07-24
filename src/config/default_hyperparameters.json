@@ -1,5 +1,6 @@
 {
-  "encode_len": 8,
-  "n_estimators": 50,
+  "encode_len": 10,
+  "max_depth": 10,
+  "n_estimators": 75,
   "random_state": 42
 }
