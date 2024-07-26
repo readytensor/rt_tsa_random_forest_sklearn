@@ -5,11 +5,10 @@ from prediction.predictor_model import (
     save_predictor_model,
     train_predictor_model,
 )
-from preprocessing.preprocess import (
-    get_preprocessing_pipelines,
+from preprocessing.pipeline import (
+    create_preprocess_pipeline,
     fit_transform_with_pipeline,
-    fit_pipeline,
-    save_pipelines,
+    save_pipeline,
 )
 from schema.data_schema import load_json_data_schema, save_schema
 from utils import (
@@ -29,7 +28,6 @@ def run_training(
     saved_schema_dir_path: str = paths.SAVED_SCHEMA_DIR_PATH,
     model_config_file_path: str = paths.MODEL_CONFIG_FILE_PATH,
     train_dir: str = paths.TRAIN_DIR,
-    preprocessing_config_file_path: str = paths.PREPROCESSING_CONFIG_FILE_PATH,
     preprocessing_dir_path: str = paths.PREPROCESSING_DIR_PATH,
     predictor_dir_path: str = paths.PREDICTOR_DIR_PATH,
     default_hyperparameters_file_path: str = paths.DEFAULT_HYPERPARAMETERS_FILE_PATH,
@@ -78,9 +76,6 @@ def run_training(
                 data=train_data, data_schema=data_schema, is_train=True
             )
 
-            logger.info("Loading preprocessing config...")
-            preprocessing_config = read_json_as_dict(preprocessing_config_file_path)
-
             # use default hyperparameters to train model
             logger.info("Loading hyperparameters...")
             hyperparameters = read_json_as_dict(default_hyperparameters_file_path)
@@ -91,6 +86,7 @@ def run_training(
                     validated_data,
                     test_split=model_config["validation_split"],
                     id_col=data_schema.id_col,
+                    time_col=data_schema.time_col,
                 )
 
                 tuned_hyperparameters = tune_hyperparameters(
@@ -101,39 +97,31 @@ def run_training(
                     is_minimize=False,  # scoring metric is f1-score - so maximize it.
                     default_hyperparameters_file_path=default_hyperparameters_file_path,
                     hpt_specs_file_path=hpt_specs_file_path,
-                    preprocessing_config=preprocessing_config,
                 )
 
                 hyperparameters.update(tuned_hyperparameters)
                 logger.info(f"Tuned hyperparameters: {hyperparameters}")
 
             logger.info("Fitting preprocessing pipelines...")
-            training_pipeline, inference_pipeline = get_preprocessing_pipelines(
-                data_schema,
-                preprocessing_config,
-                hyperparameters,
+            preprocessing_pipeline = create_preprocess_pipeline(
+                data_schema=data_schema,
+                scaler_type=hyperparameters["scaler_type"],
             )
-            trained_pipeline, transformed_data = fit_transform_with_pipeline(
-                training_pipeline, validated_data
+            preprocessing_pipeline, transformed_data = fit_transform_with_pipeline(
+                preprocessing_pipeline, validated_data
             )
-
-            inference_pipeline = fit_pipeline(inference_pipeline, validated_data)
-
             logger.info(f"Transformed data shape: {transformed_data.shape}")
-            trimmed_encode_len = transformed_data.shape[1]
-            hyperparameters["encode_len"] = trimmed_encode_len
 
             logger.info("Training classifier...")
             classifier = train_predictor_model(
                 train_data=transformed_data,
                 data_schema=data_schema,
                 hyperparameters=hyperparameters,
-                padding_value=preprocessing_config["padding_value"],
             )
 
-        # Save pipelines
-        logger.info("Saving pipelines...")
-        save_pipelines(trained_pipeline, inference_pipeline, preprocessing_dir_path)
+        # Save pipeline
+        logger.info("Saving pipeline...")
+        save_pipeline(preprocessing_pipeline, preprocessing_dir_path)
 
         # save predictor model
         logger.info("Saving classifier...")

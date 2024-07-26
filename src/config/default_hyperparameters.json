@@ -1,6 +1,6 @@
 {
-  "encode_len": 10,
-  "max_depth": 10,
+  "window_length_factor": 4.0,
+  "max_depth": 12,
   "n_estimators": 75,
-  "random_state": 42
+  "scaler_type": "standard"
 }

@@ -1,15 +1,13 @@
 import numpy as np
 import pandas as pd
-
 from config import paths
 from data_models.data_validator import validate_data
 from data_models.prediction_data_model import validate_predictions
 from logger import get_logger, log_error
 from prediction.predictor_model import load_predictor_model, predict_with_model
-from preprocessing.preprocess import (
-    load_pipeline_of_type,
-    transform_data,
-)
+from schema.data_schema import TimeStepClassificationSchema
+
+from preprocessing.pipeline import load_pipeline, transform_data
 from schema.data_schema import load_saved_schema
 from utils import (
     read_csv_in_directory,
@@ -102,16 +100,12 @@ def run_batch_predictions(
             validated_test_data = validate_data(
                 data=test_data, data_schema=data_schema, is_train=False
             )
-
             # fit and transform using pipeline and target encoder, then save them
             logger.info("Loading preprocessing pipeline ...")
+            pipeline = load_pipeline(preprocessing_dir_path)
 
-            inference_pipeline = load_pipeline_of_type(
-                preprocessing_dir_path, pipeline_type="inference"
-            )
-            transformed_test_data = transform_data(
-                inference_pipeline, validated_test_data
-            )
+            logger.info("Preprocessing test data ...")
+            transformed_test_data = transform_data(pipeline, validated_test_data)
 
             logger.info("Loading predictor model...")
             predictor_model = load_predictor_model(predictor_dir_path)
@@ -119,7 +113,7 @@ def run_batch_predictions(
             logger.info("Making predictions...")
             predictions_arr = predict_with_model(predictor_model, transformed_test_data)
 
-            label_encoder = inference_pipeline.named_steps["target_encoder"]
+            label_encoder = pipeline.named_steps["target_encoder"]
 
             logger.info("Creating final predictions dataframe...")
             predictions_df = create_predictions_dataframe(

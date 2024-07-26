@@ -2,6 +2,14 @@
   "num_trials": 10,
   "hyperparameters": [
     {
+      "name": "window_length_factor",
+      "short_desc": "Factor used to adjust the base window length derived from the logarithm of the minimum row count per group",
+      "type": "real",
+      "search_type": "uniform",
+      "range_low": 3.0,
+      "range_high": 8.0
+    },
+    {
       "name": "encode_len",
       "short_desc": "The window size.",
       "type": "int",
