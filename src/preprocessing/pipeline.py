@@ -1,30 +1,32 @@
 import joblib
+import os
+import numpy as np
 import pandas as pd
-from typing import Any, Tuple
+from typing import Any, Tuple, Dict
 from sklearn.pipeline import Pipeline
 from preprocessing import custom_transformers as transformers
 
 
-def create_preprocess_pipelines(
+PIPELINE_FILE_NAME = "pipeline.joblib"
+
+
+def create_preprocess_pipeline(
     data_schema: Any,
-    preprocessing_config: dict,
-    encode_len: int,
-) -> Tuple[Pipeline, Pipeline]:
+    scaler_type: str,
+) -> Pipeline:
     """
-    Constructs two preprocessing pipeline for time-series data:
-        one for training and another inference.
+    Constructs preprocessing pipeline for time-series data.
 
     Args:
         data_schema: The schema of the data, containing information like column names.
         preprocessing_config (dict): Configuration parameters for preprocessing, like scaler bounds.
-        encode_len (int): The length of the encoding window.
+        scaler (int): Scaler to use for normalizing features.
 
     Returns:
-        Tuple[Pipeline, Pipeline]: Tuple of training and inference pipelines
+        Pipeline: Preprocessing pipeline
     """
-
-    # Common steps for both train and inference pipelines
-    common_steps = [
+    # Steps for preprocessing pipeline
+    steps = [
         (
             "column_selector",
             transformers.ColumnSelector(
@@ -48,67 +50,40 @@ def create_preprocess_pipelines(
             ),
         ),
         (
-            "minmax_scaler",
-            transformers.TimeSeriesMinMaxScaler(columns=data_schema.features),
-        ),
-        (
-            "padding",
-            transformers.PaddingTransformer(
-                id_col=data_schema.id_col,
-                target_col=data_schema.target,
-                padding_value=preprocessing_config["padding_value"],
+            "scaler",
+            transformers.ScalerByFeatureDim(
+                columns=data_schema.features,
+                scaler_type=scaler_type,
             ),
         ),
         (
             "target_encoder",
             transformers.LabelEncoder(columns=[data_schema.target]),
         ),
-        (
-            "reshaped_3d",
-            transformers.ReshaperToThreeD(
-                id_col=data_schema.id_col,
-                time_col=data_schema.time_col,
-                value_columns=data_schema.features,
-                target_column=data_schema.target,
-            ),
-        ),
     ]
-    training_steps = common_steps.copy()
-    inference_steps = common_steps.copy()
-
-    # training-specific steps
-    training_steps.extend(
-        [
-            (
-                "window_generator",
-                transformers.TimeSeriesWindowGenerator(
-                    window_size=encode_len,
-                    stride=1,
-                    max_windows=preprocessing_config["max_windows"],
-                    padding_value=preprocessing_config["padding_value"],
-                ),
-            ),
-        ]
-    )
-    # inference-specific steps
-    inference_steps.extend(
-        [
-            (
-                "window_generator",
-                transformers.TimeSeriesWindowGenerator(
-                    window_size=encode_len,
-                    stride=encode_len // 2,
-                    max_windows=None,
-                    mode="inference",
-                    padding_value=preprocessing_config["padding_value"],
-                ),
-            ),
-        ]
-    )
-    return Pipeline(training_steps), Pipeline(inference_steps)
+    return Pipeline(steps)
 
 
-def train_pipeline(pipeline: Pipeline, data: pd.DataFrame) -> pd.DataFrame:
+def fit_transform_with_pipeline(
+    pipeline: Pipeline, data: pd.DataFrame
+) -> Tuple[Pipeline, np.ndarray]:
+    """
+    Fit the preprocessing pipeline and transform data.
+
+    Args:
+        pipeline (Pipeline): The preprocessing pipeline.
+        data (pd.DataFrame): The data as a numpy array
+
+    Returns:
+        Pipeline: Fitted preprocessing pipeline.
+        np.ndarray: transformed data as a numpy array.
+    """
+    trained_pipeline = fit_pipeline(pipeline, data)
+    transformed_data = transform_data(trained_pipeline, data)
+    return trained_pipeline, transformed_data
+
+
+def fit_pipeline(pipeline: Pipeline, data: pd.DataFrame) -> pd.DataFrame:
     """
     Train the preprocessing pipeline.
 
@@ -125,7 +100,7 @@ def train_pipeline(pipeline: Pipeline, data: pd.DataFrame) -> pd.DataFrame:
     return pipeline
 
 
-def transform_inputs(pipeline: Pipeline, input_data: pd.DataFrame) -> pd.DataFrame:
+def transform_data(pipeline: Pipeline, input_data: pd.DataFrame) -> pd.DataFrame:
     """
     Transform the input data using the preprocessing pipeline.
 
@@ -139,23 +114,26 @@ def transform_inputs(pipeline: Pipeline, input_data: pd.DataFrame) -> pd.DataFra
     return pipeline.transform(input_data)
 
 
-def save_pipeline(pipeline: Pipeline, file_path_and_name: str) -> None:
+def save_pipeline(pipeline: Pipeline, save_dir: str) -> None:
     """Save the fitted pipeline to a pickle file.
 
     Args:
         pipeline (Pipeline): The fitted pipeline to be saved.
-        file_path_and_name (str): The path where the pipeline should be saved.
+        save_dir (str): The dir path where the pipeline should be saved.
     """
+    os.makedirs(save_dir, exist_ok=True)
+    file_path_and_name = os.path.join(save_dir, PIPELINE_FILE_NAME)
     joblib.dump(pipeline, file_path_and_name)
 
 
-def load_pipeline(file_path_and_name: str) -> Pipeline:
+def load_pipeline(save_dir: str) -> Pipeline:
     """Load the fitted pipeline from the given path.
 
     Args:
-        file_path_and_name: Path to the saved pipeline.
+        save_dir: Dir path to the saved pipeline.
 
     Returns:
         Fitted pipeline.
     """
+    file_path_and_name = os.path.join(save_dir, PIPELINE_FILE_NAME)
     return joblib.load(file_path_and_name)
